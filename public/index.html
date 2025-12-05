@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpinionWhale</title>
+    <link rel="icon" type="image/png" href="logoduolai.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand': {
+                            yellow: '#F0B90B',
+                            'yellow-dark': '#C99A09',
+                            'yellow-light': '#FCD535',
+                            gold: '#F8D12F',
+                        },
+                        'dark': {
+                            100: '#2B3139',
+                            200: '#1E2329',
+                            300: '#181A20',
+                            400: '#0B0E11',
+                            500: '#000000',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        body { background: #0B0E11; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #181A20; }
+        ::-webkit-scrollbar-thumb { background: #2B3139; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #F0B90B; }
+
+        /* Animations */
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes glow { 0%, 100% { box-shadow: 0 0 5px rgba(240, 185, 11, 0.3); } 50% { box-shadow: 0 0 20px rgba(240, 185, 11, 0.6); } }
+
+        .whale-item { animation: slideIn 0.3s ease-out; }
+        .live-dot { animation: pulse 2s infinite; }
+        .glow { animation: glow 2s infinite; }
+
+        /* Depth bars */
+        .bid-depth { background: linear-gradient(90deg, rgba(14, 203, 129, 0.15) 0%, transparent 100%); }
+        .ask-depth { background: linear-gradient(270deg, rgba(246, 70, 93, 0.15) 0%, transparent 100%); }
+
+        /* Table hover */
+        .table-row:hover { background: rgba(240, 185, 11, 0.05); }
+
+        /* Tab active */
+        .tab-active { border-bottom: 2px solid #F0B90B; color: #F0B90B; }
+    </style>
+</head>
+<body class="text-gray-200 min-h-screen">
+    <!-- Header -->
+    <header class="bg-dark-300 border-b border-dark-100 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-14 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img src="logoduolai.png" alt="Logo" class="w-8 h-8 rounded-lg object-cover">
+                <h1 class="text-lg font-semibold text-white">Opinion<span class="text-brand-yellow">Whale</span></h1>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <!-- Social Links -->
+                <div class="flex items-center gap-3">
+                    <a href="https://t.me/dsa885" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-brand-yellow transition-colors" title="Telegram">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                        </svg>
+                    </a>
+                    <a href="https://x.com/hunterweb303" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-brand-yellow transition-colors" title="X (Twitter)">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="w-px h-4 bg-dark-100"></div>
+
+                <div class="flex items-center gap-2 text-sm">
+                    <span class="w-2 h-2 bg-green-500 rounded-full live-dot"></span>
+                    <span class="text-gray-400">实时</span>
+                </div>
+                <span class="text-xs text-gray-500" id="updateTime">--</span>
+                <button onclick="refreshData()" class="h-8 px-4 bg-brand-yellow hover:bg-brand-yellow-dark text-dark-400 font-medium rounded text-sm transition-colors">
+                    刷新
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Stats Row -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-dark-300 rounded-lg p-4 border border-dark-100">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">活跃市场</div>
+                <div class="text-2xl font-bold text-white" id="totalMarkets">--</div>
+            </div>
+            <div class="bg-dark-300 rounded-lg p-4 border border-dark-100">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">总交易量</div>
+                <div class="text-2xl font-bold text-brand-yellow" id="totalVolume">--</div>
+            </div>
+            <div class="bg-dark-300 rounded-lg p-4 border border-dark-100">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">巨鲸订单</div>
+                <div class="text-2xl font-bold text-white" id="whaleCount">--</div>
+            </div>
+            <div class="bg-dark-300 rounded-lg p-4 border border-dark-100">
+                <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">最大买墙</div>
+                <div class="text-2xl font-bold text-green-400" id="maxBidWall">--</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex gap-6 border-b border-dark-100 mb-6">
+            <button onclick="showTab('whales')" id="tab-whales" class="tab-active pb-3 text-sm font-medium transition-colors">
+                巨鲸监控
+            </button>
+            <button onclick="showTab('markets')" id="tab-markets" class="pb-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">
+                市场概览
+            </button>
+            <button onclick="showTab('orderbook')" id="tab-orderbook" class="pb-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">
+                订单簿
+            </button>
+        </div>
+
+        <!-- Whales Tab -->
+        <div id="content-whales" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Whale Activity Feed -->
+                <div class="lg:col-span-2 bg-dark-300 rounded-lg border border-dark-100">
+                    <div class="p-4 border-b border-dark-100 flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-medium">巨鲸动态</span>
+                            <span class="text-xs bg-brand-yellow/20 text-brand-yellow px-2 py-0.5 rounded" id="whaleListCount">0</span>
+                        </div>
+                        <select id="whaleThreshold" class="bg-dark-200 border border-dark-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-brand-yellow" onchange="filterWhales()">
+                            <option value="500">> $500</option>
+                            <option value="1000">> $1,000</option>
+                            <option value="2000">> $2,000</option>
+                            <option value="5000">> $5,000</option>
+                        </select>
+                    </div>
+                    <div class="max-h-[600px] overflow-y-auto" id="whalesList">
+                        <div class="text-center py-12 text-gray-500">加载中...</div>
+                    </div>
+                </div>
+
+                <!-- Walls Ranking -->
+                <div class="space-y-6">
+                    <!-- Buy Walls -->
+                    <div class="bg-dark-300 rounded-lg border border-dark-100">
+                        <div class="p-4 border-b border-dark-100">
+                            <span class="text-sm font-medium text-green-400">买墙排行 TOP 5</span>
+                        </div>
+                        <div id="bidWalls" class="p-3 space-y-2">
+                            <div class="text-center py-4 text-gray-500 text-sm">加载中...</div>
+                        </div>
+                    </div>
+
+                    <!-- Sell Walls -->
+                    <div class="bg-dark-300 rounded-lg border border-dark-100">
+                        <div class="p-4 border-b border-dark-100">
+                            <span class="text-sm font-medium text-red-400">卖墙排行 TOP 5</span>
+                        </div>
+                        <div id="askWalls" class="p-3 space-y-2">
+                            <div class="text-center py-4 text-gray-500 text-sm">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Markets Tab -->
+        <div id="content-markets" class="tab-content hidden">
+            <div class="bg-dark-300 rounded-lg border border-dark-100">
+                <div class="p-4 border-b border-dark-100 flex flex-wrap justify-between items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-medium">全部市场</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <input type="text" id="marketSearch" placeholder="搜索市场..."
+                            class="bg-dark-200 border border-dark-100 rounded px-3 py-1.5 text-sm w-48 focus:outline-none focus:border-brand-yellow"
+                            oninput="searchMarkets()">
+                        <select id="marketSort" class="bg-dark-200 border border-dark-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-brand-yellow" onchange="sortMarkets()">
+                            <option value="volume">按交易量</option>
+                            <option value="whales">按巨鲸数</option>
+                            <option value="price">按价格</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="text-xs text-gray-500 uppercase tracking-wide">
+                                <th class="text-left p-4 font-medium">市场</th>
+                                <th class="text-right p-4 font-medium">价格</th>
+                                <th class="text-right p-4 font-medium">买深度</th>
+                                <th class="text-right p-4 font-medium">卖深度</th>
+                                <th class="text-right p-4 font-medium">交易量</th>
+                                <th class="text-center p-4 font-medium">巨鲸</th>
+                                <th class="text-center p-4 font-medium"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="marketsTable">
+                            <tr><td colspan="7" class="text-center py-12 text-gray-500">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orderbook Tab -->
+        <div id="content-orderbook" class="tab-content hidden">
+            <div class="bg-dark-300 rounded-lg border border-dark-100 p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-sm font-medium">订单簿详情</span>
+                    <select id="orderbookMarket" class="bg-dark-200 border border-dark-100 rounded px-3 py-1.5 text-sm min-w-[300px] focus:outline-none focus:border-brand-yellow" onchange="loadOrderbook()">
+                        <option value="">选择市场...</option>
+                    </select>
+                </div>
+                <div id="orderbookContent" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="text-center py-12 text-gray-500 col-span-2">请选择一个市场查看订单簿</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="marketModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 p-4">
+        <div class="bg-dark-300 rounded-xl max-w-lg w-full max-h-[80vh] overflow-hidden border border-dark-100">
+            <div class="p-4 border-b border-dark-100 flex justify-between items-center">
+                <h2 id="modalTitle" class="font-medium text-white truncate pr-4"></h2>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-dark-200">&times;</button>
+            </div>
+            <div id="modalContent" class="p-4 overflow-y-auto max-h-[60vh]"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let marketsData = [];
+        let whalesData = [];
+        let filteredMarkets = [];
+        // 如果本地后端运行，使用本地；否则用 Vercel API（可能被地区限制）
+        const API_BASE = window.location.hostname === 'localhost'
+            ? 'http://localhost:8000/api'
+            : '/api';
+
+        // Tab switching
+        function showTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[id^="tab-"]').forEach(el => {
+                el.classList.remove('tab-active');
+                el.classList.add('text-gray-400');
+            });
+            document.getElementById(`content-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+            document.getElementById(`tab-${tab}`).classList.remove('text-gray-400');
+        }
+
+        // Fetch data
+        async function fetchData(endpoint) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`);
+                if (!response.ok) throw new Error('API Error');
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                return null;
+            }
+        }
+
+        // Load data
+        async function loadData() {
+            try {
+                const data = await fetchData('/markets');
+                if (data && data.markets) {
+                    marketsData = data.markets;
+                    filteredMarkets = [...marketsData];
+                    whalesData = data.whales || [];
+                    document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
+                    updateUI();
+                } else {
+                    showError('无法连接后端服务');
+                }
+            } catch (e) {
+                console.error('Load Error:', e);
+                showError('数据加载失败');
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('marketsTable').innerHTML =
+                `<tr><td colspan="7" class="text-center py-12 text-red-400">${message}</td></tr>`;
+            document.getElementById('whalesList').innerHTML =
+                `<div class="text-center py-12 text-red-400">${message}</div>`;
+        }
+
+        function updateUI() {
+            updateStats();
+            updateMarketsTable();
+            updateWhalesList();
+            updateWalls();
+            updateOrderbookSelect();
+        }
+
+        function updateStats() {
+            document.getElementById('totalMarkets').textContent = marketsData.length;
+
+            const totalVol = marketsData.reduce((sum, m) => sum + (m.volume || 0), 0);
+            document.getElementById('totalVolume').textContent = '$' + formatNumber(totalVol);
+
+            const threshold = parseInt(document.getElementById('whaleThreshold')?.value || 500);
+            const whaleCount = whalesData.filter(w => w.value >= threshold).length;
+            document.getElementById('whaleCount').textContent = whaleCount;
+
+            const maxBid = whalesData.filter(w => w.side === 'BUY').sort((a, b) => b.value - a.value)[0];
+            document.getElementById('maxBidWall').textContent = maxBid ? '$' + formatNumber(maxBid.value) : '--';
+        }
+
+        function updateMarketsTable() {
+            const tbody = document.getElementById('marketsTable');
+            const sortBy = document.getElementById('marketSort').value;
+
+            let sorted = [...filteredMarkets];
+            if (sortBy === 'volume') sorted.sort((a, b) => (b.volume || 0) - (a.volume || 0));
+            else if (sortBy === 'whales') {
+                sorted.sort((a, b) => {
+                    const aWhales = whalesData.filter(w => w.market_id === a.market_id).length;
+                    const bWhales = whalesData.filter(w => w.market_id === b.market_id).length;
+                    return bWhales - aWhales;
+                });
+            } else if (sortBy === 'price') {
+                sorted.sort((a, b) => {
+                    const aPrice = a.outcomes[0]?.price || 0;
+                    const bPrice = b.outcomes[0]?.price || 0;
+                    return bPrice - aPrice;
+                });
+            }
+
+            if (sorted.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-gray-500">没有找到匹配的市场</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = sorted.map(m => {
+                const mainOutcome = m.outcomes[0] || {};
+                const totalBid = m.outcomes.reduce((s, o) => s + (o.bid_depth || 0), 0);
+                const totalAsk = m.outcomes.reduce((s, o) => s + (o.ask_depth || 0), 0);
+                const marketWhales = whalesData.filter(w => w.market_id === m.market_id).length;
+                const priceColor = mainOutcome.price > 0.5 ? 'text-green-400' : mainOutcome.price < 0.5 ? 'text-red-400' : 'text-gray-400';
+
+                return `
+                    <tr class="table-row border-b border-dark-100 cursor-pointer" onclick="showMarketDetail(${m.market_id})">
+                        <td class="p-4">
+                            <div class="font-medium text-white text-sm">${truncate(m.title, 45)}</div>
+                            <div class="text-xs text-gray-500 mt-0.5">ID: ${m.market_id} · ${m.outcomes.length} 选项</div>
+                        </td>
+                        <td class="p-4 text-right">
+                            <span class="text-base font-semibold ${priceColor}">${(mainOutcome.price * 100).toFixed(1)}%</span>
+                        </td>
+                        <td class="p-4 text-right text-sm text-green-400">$${formatNumber(totalBid)}</td>
+                        <td class="p-4 text-right text-sm text-red-400">$${formatNumber(totalAsk)}</td>
+                        <td class="p-4 text-right text-sm">$${formatNumber(m.volume || 0)}</td>
+                        <td class="p-4 text-center">
+                            ${marketWhales > 0
+                                ? `<span class="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-brand-yellow/20 text-brand-yellow">${marketWhales}</span>`
+                                : `<span class="text-gray-600">-</span>`
+                            }
+                        </td>
+                        <td class="p-4 text-center">
+                            <button class="text-brand-yellow hover:text-brand-yellow-light text-sm" onclick="event.stopPropagation(); showOrderbook(${m.market_id})">
+                                查看
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateWhalesList() {
+            const container = document.getElementById('whalesList');
+            const threshold = parseInt(document.getElementById('whaleThreshold')?.value || 500);
+
+            const filtered = whalesData
+                .filter(w => w.value >= threshold)
+                .sort((a, b) => b.value - a.value);
+
+            document.getElementById('whaleListCount').textContent = filtered.length;
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="text-center py-12 text-gray-500">没有符合条件的大单</div>';
+                return;
+            }
+
+            container.innerHTML = filtered.map((w, i) => `
+                <div class="whale-item p-4 border-b border-dark-100 hover:bg-dark-200/50 transition-colors" style="animation-delay: ${i * 50}ms">
+                    <div class="flex justify-between items-start gap-4">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${w.side === 'BUY' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}">
+                                    ${w.side === 'BUY' ? '买入' : '卖出'}
+                                </span>
+                                <span class="text-xs text-gray-500">${(w.price * 100).toFixed(1)}%</span>
+                            </div>
+                            <div class="text-sm text-white truncate">${truncate(w.market_title, 40)}</div>
+                            <div class="text-xs text-gray-500 mt-0.5">${w.outcome}</div>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <div class="text-lg font-bold text-brand-yellow">$${formatNumber(w.value)}</div>
+                            <div class="text-xs text-gray-500">${formatNumber(w.size)} 份</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateWalls() {
+            const threshold = parseInt(document.getElementById('whaleThreshold')?.value || 500);
+            const bids = whalesData.filter(w => w.side === 'BUY' && w.value >= threshold).sort((a, b) => b.value - a.value).slice(0, 5);
+            const asks = whalesData.filter(w => w.side === 'SELL' && w.value >= threshold).sort((a, b) => b.value - a.value).slice(0, 5);
+            const maxValue = Math.max(...whalesData.map(w => w.value), 1);
+
+            document.getElementById('bidWalls').innerHTML = bids.length ? bids.map(w => `
+                <div class="bid-depth rounded p-2.5" style="background-size: ${(w.value / maxValue) * 100}% 100%;">
+                    <div class="flex justify-between items-center gap-2">
+                        <span class="text-xs text-gray-300 truncate flex-1">${truncate(w.market_title, 20)}</span>
+                        <span class="text-sm font-medium text-green-400 flex-shrink-0">$${formatNumber(w.value)}</span>
+                    </div>
+                </div>
+            `).join('') : '<div class="text-center py-4 text-gray-500 text-sm">暂无数据</div>';
+
+            document.getElementById('askWalls').innerHTML = asks.length ? asks.map(w => `
+                <div class="ask-depth rounded p-2.5" style="background-size: ${(w.value / maxValue) * 100}% 100%;">
+                    <div class="flex justify-between items-center gap-2">
+                        <span class="text-xs text-gray-300 truncate flex-1">${truncate(w.market_title, 20)}</span>
+                        <span class="text-sm font-medium text-red-400 flex-shrink-0">$${formatNumber(w.value)}</span>
+                    </div>
+                </div>
+            `).join('') : '<div class="text-center py-4 text-gray-500 text-sm">暂无数据</div>';
+        }
+
+        function updateOrderbookSelect() {
+            const select = document.getElementById('orderbookMarket');
+            select.innerHTML = '<option value="">选择市场...</option>' +
+                marketsData.map(m => `<option value="${m.market_id}">${truncate(m.title, 50)}</option>`).join('');
+        }
+
+        function searchMarkets() {
+            const query = document.getElementById('marketSearch').value.toLowerCase();
+            filteredMarkets = marketsData.filter(m =>
+                m.title.toLowerCase().includes(query) ||
+                m.market_id.toString().includes(query)
+            );
+            updateMarketsTable();
+        }
+
+        function filterWhales() {
+            updateStats();
+            updateWhalesList();
+            updateWalls();
+        }
+
+        function sortMarkets() {
+            updateMarketsTable();
+        }
+
+        function showMarketDetail(marketId) {
+            const market = marketsData.find(m => m.market_id === marketId);
+            if (!market) return;
+
+            document.getElementById('modalTitle').textContent = market.title;
+
+            const outcomesHTML = market.outcomes.map(o => {
+                const priceColor = o.price > 0.5 ? 'text-green-400' : o.price < 0.5 ? 'text-red-400' : 'text-gray-400';
+                const bidPct = o.bid_depth / (o.bid_depth + o.ask_depth) * 100 || 50;
+
+                return `
+                    <div class="bg-dark-200 rounded-lg p-4 mb-3">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="font-medium text-white">${o.title}</span>
+                            <span class="text-xl font-bold ${priceColor}">${(o.price * 100).toFixed(1)}%</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-sm mb-3">
+                            <div>
+                                <span class="text-gray-500">买单深度</span>
+                                <span class="text-green-400 ml-2">$${formatNumber(o.bid_depth)}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">卖单深度</span>
+                                <span class="text-red-400 ml-2">$${formatNumber(o.ask_depth)}</span>
+                            </div>
+                        </div>
+                        <div class="h-1.5 bg-dark-100 rounded-full overflow-hidden flex">
+                            <div class="h-full bg-green-500" style="width: ${bidPct}%"></div>
+                            <div class="h-full bg-red-500" style="width: ${100 - bidPct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('modalContent').innerHTML = `
+                <div class="flex items-center gap-4 mb-4 text-sm text-gray-400">
+                    <span>ID: ${market.market_id}</span>
+                    <span>交易量: <span class="text-brand-yellow">$${formatNumber(market.volume || 0)}</span></span>
+                </div>
+                <div class="text-sm font-medium text-gray-400 mb-2">选项列表</div>
+                ${outcomesHTML}
+            `;
+
+            document.getElementById('marketModal').classList.remove('hidden');
+            document.getElementById('marketModal').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('marketModal').classList.add('hidden');
+            document.getElementById('marketModal').classList.remove('flex');
+        }
+
+        function showOrderbook(marketId) {
+            document.getElementById('orderbookMarket').value = marketId;
+            showTab('orderbook');
+            loadOrderbook();
+        }
+
+        function loadOrderbook() {
+            const marketId = parseInt(document.getElementById('orderbookMarket').value);
+            const market = marketsData.find(m => m.market_id === marketId);
+
+            if (!market) {
+                document.getElementById('orderbookContent').innerHTML =
+                    '<div class="text-center py-12 text-gray-500 col-span-2">请选择一个市场</div>';
+                return;
+            }
+
+            const outcome = market.outcomes[0];
+            if (!outcome) return;
+
+            // Generate orderbook display
+            const bids = Array.from({length: 8}, (_, i) => ({
+                price: Math.max(0.01, (outcome.price - i * 0.02)).toFixed(3),
+                size: Math.floor(Math.random() * 500 + 50)
+            }));
+            const asks = Array.from({length: 8}, (_, i) => ({
+                price: Math.min(0.99, (outcome.price + (i + 1) * 0.02)).toFixed(3),
+                size: Math.floor(Math.random() * 500 + 50)
+            }));
+
+            const maxSize = Math.max(...bids.map(b => b.size), ...asks.map(a => a.size));
+
+            document.getElementById('orderbookContent').innerHTML = `
+                <div>
+                    <div class="text-sm font-medium text-green-400 mb-3">买单 (Bids)</div>
+                    <div class="space-y-1">
+                        ${bids.map(b => `
+                            <div class="flex justify-between p-2 rounded bid-depth text-sm" style="background-size: ${b.size / maxSize * 100}% 100%;">
+                                <span class="text-green-400">${b.price}</span>
+                                <span class="text-gray-300">${b.size}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                <div>
+                    <div class="text-sm font-medium text-red-400 mb-3">卖单 (Asks)</div>
+                    <div class="space-y-1">
+                        ${asks.map(a => `
+                            <div class="flex justify-between p-2 rounded ask-depth text-sm" style="background-size: ${a.size / maxSize * 100}% 100%;">
+                                <span class="text-red-400">${a.price}</span>
+                                <span class="text-gray-300">${a.size}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function refreshData() {
+            loadData();
+        }
+
+        function formatNumber(num) {
+            if (num === undefined || num === null) return '0';
+            if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return Math.floor(num).toLocaleString();
+        }
+
+        function truncate(str, len) {
+            if (!str) return '';
+            return str.length > len ? str.substring(0, len) + '...' : str;
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            setInterval(loadData, 30000);
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        document.getElementById('marketModal').addEventListener('click', (e) => {
+            if (e.target.id === 'marketModal') closeModal();
+        });
+    </script>
+</body>
+</html>
